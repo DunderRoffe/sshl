@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+from argparse import ArgumentParser
+from subprocess import run
+from os import environ
+from sys import exit
+
+import json
+
+from typing import Tuple
+
+NETWORK_ADDRESS = "NETWORK_ADDRESS"
+CONF_FILE_NAME = ".sshl.json"
+
+SSHL_DESCRIPTION= """
+SSH Local is a tool that lets you SSH on your local network without having to
+restate the full network address every time. It is configured through a file
+called '{}' in home directory of the running user.
+
+Example using just ssh: ssh remote-user@192.168.0.123
+Example using sshl: sshl remote-user@123
+
+The above examples assumes that {} is set to '192.168.0'.
+""".format(CONF_FILE_NAME, NETWORK_ADDRESS)
+
+def parse_arguments() -> Tuple[str, str]:
+    parser = ArgumentParser(prog="SSH Local",
+                            description=SSHL_DESCRIPTION)
+    parser.add_argument("target", type=str, help="A string formatted as\
+                        'user@target-host' or just 'target-host' where\
+                        target-host is the last 8 bits in the IP address\
+                        of the host you want to ssh into.\
+                        Example: some_user@123")
+
+    args = parser.parse_args()
+
+    if "@" in args.target:
+        user, target_ip = args.target.split("@")
+    else:
+        user = environ["USER"]
+        target_ip = args.target
+
+    return (user, target_ip)
+
+def parse_config() -> dict:
+    try:
+        conf_file_path = "{}/{}".format(Path.home(), CONF_FILE_NAME)
+        with open(conf_file_path, "r") as conf_file:
+             try:
+                 conf = json.load(conf_file)
+             except json.JSONDecodeError:
+                    print("The config file '{}' is not a valid JSON document."
+                          .format(CONF_FILE_NAME))
+                    exit(1)
+        return conf
+
+    except FileNotFoundError:
+           print("No config file could be found at '{}'."
+                 .format(conf_file_path))
+           exit(2)
+
+if __name__ == "__main__":
+   user, target_ip = parse_arguments()
+   conf = parse_config()
+   network_address = conf[NETWORK_ADDRESS]
+
+   run(["ssh", "{}@{}.{}".format(user, network_address, target_ip)])
