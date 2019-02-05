@@ -68,4 +68,7 @@ if __name__ == "__main__":
    conf = parse_config()
    network_address = conf[NETWORK_ADDRESS]
 
-   run(["ssh"] + additional_args + ["{}@{}.{}".format(user, network_address, target_ip)])
+   try:
+       run(["ssh"] + additional_args + ["{}@{}.{}".format(user, network_address, target_ip)])
+   except KeyboardInterrupt:
+       pass
